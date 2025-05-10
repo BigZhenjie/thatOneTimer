@@ -5,10 +5,12 @@ import { Toggle } from "./components/ui/toggle";
 import { Play, Pause, RefreshCw, Moon } from "lucide-react";
 
 export default function PomodoroTimer() {
-  const [seconds, setSeconds] = useState(0);
+  const [seconds, setSeconds] = useState(6590);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
+  const [isLongBreak, setIsLongBreak] = useState(false); // New state for long break
   const [breakTimeLeft, setBreakTimeLeft] = useState(10);
+  const [longBreakTimeLeft, setLongBreakTimeLeft] = useState(1200); // 20 minutes = 1200 seconds
   const [nextBreakTime, setNextBreakTime] = useState(0);
 
   const countdownAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -31,7 +33,7 @@ export default function PomodoroTimer() {
 
   // Toggle timer
   const toggleTimer = () => {
-    if (!isRunning && !isBreak) {
+    if (!isRunning && !isBreak && !isLongBreak) {
       // If starting for the first time or after reset, set next break time
       if (seconds === 0) {
         setNextBreakTime(generateRandomBreakTime());
@@ -55,8 +57,10 @@ export default function PomodoroTimer() {
   const resetTimer = () => {
     setIsRunning(false);
     setIsBreak(false);
+    setIsLongBreak(false);
     setSeconds(0);
     setBreakTimeLeft(10);
+    setLongBreakTimeLeft(1200); // Reset long break time
     setNextBreakTime(0);
     if (rainAudioRef.current) {
       rainAudioRef.current.pause();
@@ -90,6 +94,7 @@ export default function PomodoroTimer() {
           // Play countdown audio 4 seconds before the break
           if (
             !isBreak &&
+            !isLongBreak &&
             nextBreakTime > 0 &&
             newSeconds === nextBreakTime - 4
           ) {
@@ -105,19 +110,30 @@ export default function PomodoroTimer() {
           }
 
           // Check if it's time for a break
-          if (!isBreak && newSeconds >= nextBreakTime && nextBreakTime > 0) {
+          if (
+            !isBreak &&
+            !isLongBreak &&
+            newSeconds >= nextBreakTime &&
+            nextBreakTime > 0
+          ) {
             setIsBreak(true);
             setBreakTimeLeft(10); // Start the 10-second break
+          }
+
+          // Check if it's time for a long break (after 90 minutes)
+          if (!isBreak && !isLongBreak && newSeconds >= 5400) {
+            setIsLongBreak(true);
+            setLongBreakTimeLeft(1200); // Start the 20-minute break
           }
 
           return newSeconds;
         });
 
-        // Handle break countdown
+        // Handle short break countdown
         if (isBreak) {
           setBreakTimeLeft((prevTime) => {
             if (prevTime <= 1) {
-              // Break is over
+              // Short break is over
               setIsBreak(false);
               setNextBreakTime(seconds + generateRandomBreakTime());
               if (rainAudioRef.current) {
@@ -129,13 +145,37 @@ export default function PomodoroTimer() {
             return prevTime - 1;
           });
         }
+
+        // Handle long break countdown
+        if (isLongBreak) {
+          setLongBreakTimeLeft((prevTime) => {
+            if (prevTime <= 1) {
+              // Long break is over
+              setIsLongBreak(false);
+              setSeconds(0); // Reset the timer for the next session
+              if (rainAudioRef.current) {
+                rainAudioRef.current.pause();
+                rainAudioRef.current.currentTime = 0;
+              }
+              return 1200; // Reset long break time
+            }
+            return prevTime - 1;
+          });
+        }
       }, 1000);
     }
 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, isBreak, nextBreakTime, seconds, generateRandomBreakTime]);
+  }, [
+    isRunning,
+    isBreak,
+    isLongBreak,
+    nextBreakTime,
+    seconds,
+    generateRandomBreakTime,
+  ]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F8EEDF] p-4 dark:bg-[#3b322d] dark:text-[#f3eee9]">
@@ -146,7 +186,7 @@ export default function PomodoroTimer() {
         <div className="flex flex-col items-center space-y-8">
           {/* Timer Display */}
           <div className="text-center">
-            <h1 className="mb-2 text-2xl font-light">Pomodoro Timer</h1>
+            <h1 className="mb-2 text-2xl font-light">That One Timer</h1>
             <div
               className="text-6xl font-light tabular-nums"
               aria-live="polite"
@@ -159,9 +199,21 @@ export default function PomodoroTimer() {
           {isBreak && (
             <div className="absolute inset-0 flex items-center justify-center bg-amber-100/80 text-amber-900 dark:bg-amber-900/80 dark:text-amber-100">
               <div className="text-center">
-                <h2 className="text-3xl font-semibold">Break Time!</h2>
+                <h2 className="text-3xl font-semibold">Short Break!</h2>
                 <p className="mt-2 text-lg">
                   Relax for {breakTimeLeft} seconds
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Long Break Notification */}
+          {isLongBreak && (
+            <div className="absolute inset-0 flex items-center justify-center bg-green-100/80 text-green-900 dark:bg-green-900/80 dark:text-green-100">
+              <div className="text-center">
+                <h2 className="text-3xl font-semibold">Long Break!</h2>
+                <p className="mt-2 text-lg">
+                  Relax for {formatTime(longBreakTimeLeft)}
                 </p>
               </div>
             </div>
@@ -171,7 +223,7 @@ export default function PomodoroTimer() {
           <div className="flex space-x-4">
             <Button
               onClick={toggleTimer}
-              disabled={isBreak}
+              disabled={isBreak || isLongBreak}
               variant="outline"
               size="lg"
               className="h-12 w-12 rounded-full p-0"
