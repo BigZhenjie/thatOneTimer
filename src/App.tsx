@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Toggle } from "./components/ui/toggle";
-import { AlertCircle, Play, Pause, RefreshCw, Moon } from "lucide-react";
+import { Play, Pause, RefreshCw, Moon } from "lucide-react";
 
 export default function PomodoroTimer() {
   const [seconds, setSeconds] = useState(0);
