@@ -5,7 +5,7 @@ import { Toggle } from "./components/ui/toggle";
 import { Play, Pause, RefreshCw, Moon } from "lucide-react";
 
 export default function PomodoroTimer() {
-  const [seconds, setSeconds] = useState(6590);
+  const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [isLongBreak, setIsLongBreak] = useState(false); // New state for long break
